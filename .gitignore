@@ -1,0 +1,25 @@
+# code-generated files
+earnings_records.csv
+exiter_report.csv
+example_fra_summary.html
+
+# output subdir
+output/
+
+# gfe specific
+fra_measures.sql
+
+# jupyter notebooks and checkpoints & py cache
+.ipynb_checkpoints
+*__pycache__*
+
+# vs code
+/.vscode/
+
+# R admin files
+.Rproj.user
+*.Rproj
+
+# quarto
+/.quarto/
+_quarto.yml

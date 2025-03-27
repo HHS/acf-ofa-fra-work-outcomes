@@ -1,0 +1,630 @@
+---
+title: "Fiscal Responsibility Act Work Outcomes Measures Example"
+lightbox: true
+format:
+  html:
+    toc: true
+    toc-depth: 4
+    toc-title: Contents
+    embed-resources: true
+    style: cosmos
+editor:
+  render-on-save: true
+
+---
+# Introduction
+ 
+This document walks through calculating quarterly and yearly Fiscal Responsibility Act (FRA) Work Outcome Measures for a single jurisdiction.
+
+The three Work Outcome Measures are:^[Interim Final Rule: [https://www.federalregister.gov/d/2024-13865/p-35](https://www.federalregister.gov/d/2024-13865/p-35)]
+
+> * **Employment Rate—2nd Quarter After Exit**: The percentage of individuals who were work-eligible individuals as of the time of exit from the program, who are in unsubsidized employment during the second quarter after the exit;
+> * **Employment Retention Rate—4th Quarter After Exit**: The percentage of individuals who were work-eligible individuals as of the time of exit from the program who were in unsubsidized employment in the second quarter after the exit, who are also in unsubsidized employment during the fourth quarter after the exit;
+> * **Median Earnings—2nd Quarter After Exit**: The median earnings of individuals who were work-eligible individuals as of the time of exit from the program, who are in unsubsidized employment during the second quarter after the exit...
+
+This document is structured as follows. First, it will explain the kinds of data sources that go into calculating these measures. Then it will describe example data used throughout the document. Then it will walk through data preparation to calculate quarterly and annual measures. Finally, it will present the calculated measures.
+
+Keep in mind:
+
+- The audience for this document is:
+  - Technical staff involved in implementing work outcomes reporting, including supplemental work outcomes reporting.
+  - Contractor team supporting OFA in producing user-friendly and responsive technical assistance materials and events for TANF programs' staff.
+- No real data from either TANF exiters or earnings records are used in this document. All SSNs are randomly generated and have a structure that means they are not real SSNs.^[All SSNs in these data either begin with 9 or they are a placeholder SSN as defined in [TANF Exiters reporting (999-99-9999)](https://acf.gov/ofa/faq/faq-fra-2023-tanf-work-outcomes-measures#Q1).] All earnings records are randomly generated. No data, code, or calculations are sensitive.
+- The data used in the document do not establish any thresholds for evaluating TANF program performance; they are merely used to demonstrate details of data preparation and measure calculation.
+- The files provided here are for informational purposes only. They are supplied as an example and may not be suitable for all systems, environments, or use cases. Before using any code or data, thoroughly review, test, and adapt it to fit your specific requirements.
+- This document depends on:
+  - `fra.py`: A python module to create fake exiter reports and earnings records.
+  - `example_fra_summary.qmd`: Quarto code to render this document. Rendering this code will change the underlying data used by the document each time.
+- This document creates two underlying data sources:
+  - `exiter_report.csv`: Year's worth of fake exiter reports. Generated with the `fra` module. Overwritten when this Quarto document is rendered.
+  - `earnings_records.csv`: Fake earnings data for individuals in exiter_report.csv. Generated with the `fra` module. Overwritten when this Quarto document is rendered.
+- Other resources related to this document:
+  - `measure_calculation.R`: R code to do the measure calculations and charts from the csv files generated with the `fra` module.
+  - `measure_calculation.sql`: SQL code to do the measure calculations from the csv files generated with the `fra` module.
+
+# Data sources
+
+Two data sources are required to generate the example measures:
+
+- **Exiter report**: These reports contain data on Work Eligible Individuals (WEIs) exiting the TANF program during the fiscal year. These data are reported by TANF programs quarterly. Example data contain four quarters or a year's worth of reports. Each row in these data contains a WEI's month of their TANF exit (`month`) and their SSN (`ssn`). Official reports that states and territories submit directly to the TANF Data Portal (TDP) differ from the example data generated here in two ways.^[Instructions for the report's requirements: [https://acf.gov/sites/default/files/documents/ofa/1A.Instructions-work-outcomes-of-TANF-exiters-report.pdf](https://acf.gov/sites/default/files/documents/ofa/1A.Instructions-work-outcomes-of-TANF-exiters-report.pdf)] First, official reports do not include a header row; a header was added to the example data for convenience only. Second, official reports are for a single fiscal quarter only; the example data contains four separate reports in one file, as if four official reports were stacked together.
+- **Earnings data**: These data contain the quarterly earnings of WEIs who have exited the TANF program. These data are not submitted by TANF programs: at the federal level, these data will come from wage records in the [National Directory for New Hires](https://acf.gov/css/training-technical-assistance/overview-national-directory-new-hires); for TANF programs interested in calculating their own measures, these data might come from State Directory of New Hires, State Unemployment Insurance Program, TANF exiter surveys, and more.^[[https://acf.gov/ofa/faq/faq-fra-2023-tanf-work-outcomes-measures#Q6](https://acf.gov/ofa/faq/faq-fra-2023-tanf-work-outcomes-measures#Q6)] The earnings data in this example assumes earnings data have been summarized for each unique SSN at the quarter level. Each row in these data contains a WEI's SSN (`ssn`), a federal fiscal quarter (`qtr`), and the dollar amount of earnings for the quarter (`earnings`).
+
+## Generate data sources
+
+The `fra` Python module creates these data sources for this example. This module allows for modifying certain attributes of these data sources through arguments:
+
+* **Fiscal Year** (`fiscal_year`): Sets the fiscal year for any point from 2025 on.
+* **Number of people** (`number_people`): Sets the total number of exiters for each quarter in the fiscal year.
+* **Duplicate probability** (`duplicate_probability`): Sets the probability that an SSN appears more than once throughout the fiscal year. This probability is included to try to make the data more realistic: an individual can be in the exit report more than once in a fiscal year provided that their exits are at least 90 days apart; an individual might be incorrectly reported if their exits occur in back-to-back months. This argument allows for some of those situations to appear in the exiter report data.^[Note that the TANF Data Portal (TDP) will not allow duplicate SSN values *within a single report-month* for non-placeholder SSNs. TDP will allow duplicate SSNs within a single reporting quarter and across a fiscal year.] 
+* **Placeholder SSN probability** (`placeholder_ssn_probability`): Sets the probability that an SSN will be a placeholder SSN (999-99-9999) for all quarters. This probability is included to try to make the data more realistic: the data collection requirements allow for reporting placeholder SSNs in the exiter report.^[[https://acf.gov/ofa/faq/faq-fra-2023-tanf-work-outcomes-measures#Q1](https://acf.gov/ofa/faq/faq-fra-2023-tanf-work-outcomes-measures#Q1)]
+* **Employment rate** (`employment_rate`): Sets the employment rate for each reporting quarter. This rate sets the proportion of non-placeholder SSNs that will have earnings records in the second quarter after exit.
+* **Retention rate** (`retention_rate`): Sets the retention rate for each reporting quarter. This rate sets the proportion of non-placeholder SSNs with earnings in the second quarter after exit that will have earnings records in the fourth quarter after exit.
+
+The following code will generate a year's worth of exiter reports and the related earnings data and save them to csv files.
+
+```{python}
+#| echo: false
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import numpy as np
+from great_tables import GT
+from fra import fiscal_lookup
+
+```
+
+```{python}
+#| echo: true
+
+from fra import FRAData, save_csv
+
+fra = FRAData(fiscal_year = 2025,
+              number_people = (395, 450, 480, 405),
+              duplicate_probability = 0.03,
+              placeholder_ssn_probability = 0.04,
+              employment_rate = (0.60, 0.71, 0.65, 0.64),
+              retention_rate = (0.81, 0.70, 0.72, 0.77))
+
+exit_data = fra.exiter_report()
+earnings_records = fra.earnings_data()
+
+save_csv(exit_data, 'exiter_report.csv')
+save_csv(earnings_records, 'earnings_records.csv')
+
+```
+
+The example data in this document have the following attributes:
+
+* **Fiscal Year** (`fiscal_year`) = `{python} fra.fiscal_year`.
+* **Number of people** (`number_people`) = `{python} fra.number_people`.
+* **Duplicate probability** (`duplicate_probability`) = `{python} fra.duplicate_probability`
+* **Placeholder SSN probability** (`placeholder_ssn_probability`): `{python} fra.placeholder_ssn_probability`
+* **Employment rate** (`employment_rate`): `{python} fra.employment_rate`
+* **Retention rate** (`retention_rate`): `{python} fra.retention_rate`
+
+## Data summary
+
+### Exit report
+
+First few rows of the exit report:
+
+```{python}
+#| echo: false
+
+exits = pd.DataFrame(exit_data)
+exits['month'] = exits['month'].astype(int)
+exits['ssn'] = exits['ssn'].astype(str)
+
+GT(exits[['month', 'ssn']].head())
+
+```
+
+```{python}
+#| echo: false
+
+month_part = exits['month'] % 100
+
+conditions = [
+    month_part.isin([10, 11, 12]),  
+    month_part.isin([1, 2, 3]),  
+    month_part.isin([4, 5, 6]),  
+    month_part.isin([7, 8, 9])  
+]
+
+# values for reporting_quarter
+values = [
+    (exits['month'] // 10) + 10,
+    (exits['month'] // 10) + 2,
+    (exits['month'] // 10) + 3,
+    (exits['month'] // 10) + 4
+]
+
+# apply case for reporting_quarter
+exits['reporting_quarter'] = np.select(conditions, values, default = np.nan).astype(int)
+
+# determine q2 - two quarters after exit
+exits['q2'] = np.where(exits['reporting_quarter'] % 10 < 3, exits['reporting_quarter'] + 2, exits['reporting_quarter'] + 8).astype(int)
+
+# determine q4 - two quarters after exit
+exits['q4'] = (exits['reporting_quarter'] + 10).astype(int)
+
+```
+
+The exit report has `{python} len(exit_data)` records. This comes from the count numbers provided to `number_people` for each quarter:
+
+```{python}
+#| echo: false
+
+counts = pd.DataFrame([{
+  'Quarter 1': fra.number_people[0],
+  'Quarter 2': fra.number_people[1],
+  'Quarter 3': fra.number_people[2],
+  'Quarter 4':  fra.number_people[3],
+  'Year total': sum(fra.number_people)
+  }])
+
+GT(counts)
+
+```
+
+
+```{python}
+#| echo: false
+
+def get_quarter(month):
+    
+    for key, values in fiscal_lookup.items():
+        if (month % 100) in values:
+            return key
+
+def get_fy(month):
+
+    if (month % 100) >= 10:
+        return (month // 100) + 1
+    else:
+        return (month // 100)
+
+exits['quarter'] = exits['month'].apply(get_quarter)
+exits['fiscal_year'] = exits['month'].apply(get_fy)
+```
+
+Placeholder SSNs are allowed to appear in submitted exit reports. For federal reporting, counts of placeholder SSNs will be reported by quarter. Placeholder SSNs *will not be included* in any work outcomes measure calculations.
+
+Placeholder SSNs record counts by quarter for these exit data:
+
+```{python}
+#| echo: false
+
+placeholder = exits[exits['ssn'] == '999999999']
+
+counts = placeholder.groupby('quarter').size()
+counts = counts.rename(lambda x: f'Quarter {x}')
+counts = counts.to_frame().T
+
+GT(counts)
+
+```
+
+Valid SSNs record counts by quarter:
+
+```{python}
+#| echo: false
+
+counts = exits[exits['ssn'] != '999999999'].groupby('quarter').size()
+counts = counts.rename(lambda x: f'Quarter {x}')
+counts = counts.to_frame().T
+
+GT(counts)
+
+```
+
+## Earnings data
+
+First few rows of earnings data:
+
+```{python}
+#| echo: false
+
+earnings = pd.DataFrame(earnings_records)
+earnings['ssn'] = earnings['ssn'].astype(str)
+earnings['qtr'] = earnings['qtr'].astype(int)
+
+GT(earnings.head())
+
+```
+
+# Data prepation
+
+The data preparation steps to calculate the FRA measures are:
+
+- Exclude placeholder SSN records
+- Handle duplicate records:
+  - Remove records that violate the 90-day exit threshold
+  - Select the latest exit for each SSN quarterly
+  - Select the latest exit for each SSN annually
+- Join the exit report and earnings data
+
+The following subsections explain each of these steps.
+
+## Exclude placeholder SSN records
+
+Placeholder SSNs will not be joined, or linked, with earnings records in this example. They will not be included in the federal FRA Work Outcomes measures' calculations. At the federal level, these records cannot be meaningful linked with earnings records on SSN alone. For states and territories opting into submitting Supplemental Work Outcomes measures, individuals without valid SSNs may have earnings information obtained through means other than linking on SSN; what is possible for each jurisdiction's data resources can vary.
+
+Placeholder SSNs are excluded from the example exit data:
+
+```{python}
+
+exits = exits[exits['ssn'] != '999999999']
+
+```
+
+## Duplicate records in exit reports
+
+Among the records with non-placeholder SSNs, we will examine duplicate SSNs. Here are all the records where a single SSN appears more than once across the fiscal year:
+
+```{python}
+#| echo: false
+
+# find duplicate SSNs
+exits_duplicates = exits[exits['ssn'].isin(exits['ssn'][exits['ssn'].duplicated()])]
+
+GT(exits_duplicates[['month', 'ssn']].sort_values(['ssn', 'month']))
+
+```
+
+Keep in mind:
+
+* The TANF Data Portal (TDP) will reject non-placeholder SSN records that have more than one exit in the same month. For example, if a single SSN had two rows in the exit report for the same month, an error would be raised. Other than that, TDP will allow the same SSN to appear across other months within a single quarterly report and across the fiscal year.
+* This document's data represents a single year's reports for a single jurisdiction. For the federal measures, with exits submitted from all state and territory TANF programs, duplicates will be handled within a single jurisdiction only. If the same SSN appears in more than one jurisdiction in a given quarter, the SSN will be retained in each jurisdiction. Said another way, SSN deduplication only occurs within jurisdictions.
+
+### Remove records that violate 90-day exit threshold
+
+For calculations, for any single SSN with more than one exit report record, if any records do not have at least one reporting month between each observation, the earlier observations will be discarded until the most recent exit record in a sequence of records is retained. This data cleaning is motivated by the requirement that WEIs must remain off of TANF cash assistance for at least 90 days.^[Page 3: [https://acf.gov/sites/default/files/documents/ofa/TANF-Work-Outcomes-Technical-Resource_clean.pdf](https://acf.gov/sites/default/files/documents/ofa/TANF-Work-Outcomes-Technical-Resource_clean.pdf)] Given that exit report data is only as granular as the month of exit, and not the day of exit, we only enforce a one-month gap between observations.
+
+This affects quarterly calculations and annual calculations. Note that for the last quarter of the reporting period, data in the next reporting period will be examined for consecutive monthly records. In other words, if an SSN appears as an exit in the last month of the reporting year and the first month of the next reporting year, the next reporting year's information will be used to clean these data. This example focuses on just a single reporting year and does not demonstrate the year-over processing.
+
+At present, it is unclear whether this data cleaning step will be necessary because real data submission trends are not yet known. In instances of remarkable exit activity, for example, the same individuals exiting in most months across the reporting year, the TANF Data Team will reach out to specific TANF programs to understand these exit dynamics.
+
+Any records without a one-month gap are excluded from the example exit data:
+
+```{python}
+
+# convert to datetime for sequential month checks
+df = exits.sort_values(by = ['ssn', 'month']).reset_index(drop = True)
+df['date'] = pd.to_datetime(df['month'].astype(str), format = '%Y%m')
+
+# check if months are consecutive
+def is_consecutive(a, b):
+    year_a, month_a = divmod(a, 100)
+    year_b, month_b = divmod(b, 100)
+
+    if year_a == year_b:
+        return month_b == month_a + 1
+    elif year_b == year_a + 1:
+        return month_a == 12 and month_b == 1
+    return False
+
+# add column to track whether each row is part of a continuous sequence
+df['sequence_group'] = 0
+for i in range(1, len(df)):
+    if is_consecutive(df.loc[i - 1, 'month'], df.loc[i, 'month']) and df.loc[i - 1, 'ssn'] == df.loc[i, 'ssn']:
+        df.loc[i, 'sequence_group'] = df.loc[i - 1, 'sequence_group']
+    else:
+        df.loc[i, 'sequence_group'] = df.loc[i - 1, 'sequence_group'] + 1
+
+# keep only the last observation in each sequence per SSN
+exits_filtered = df.loc[df.groupby(['ssn', 'sequence_group'])['date'].idxmax()]
+
+# drop columns
+exits_filtered = exits_filtered.drop(columns = ['date', 'sequence_group']).reset_index(drop = True)
+
+```
+
+### Select the latest exit quarterly
+
+For measure calculation, each SSN will only be represented once. If a single SSN appears more than once in a quarter, the most recent record in that quarter will be selected:^[Technically, the time ordering of this deduplication is not necessary: measures are at the quarter level and are not dependent on which month the exit occurs within a quarter. This time ordering detail of handling is included as a means of standardizing procedures.]
+
+```{python}
+
+exits_quarter = (
+    exits_filtered
+    .sort_values(by=['ssn', 'month'], ascending = [True, False])
+    .drop_duplicates(subset = ['reporting_quarter', 'ssn'], keep = 'first')
+)
+
+```
+
+### Select the latest exit annually
+
+For measure calculation, each SSN will only be represented once. If a single SSN appears more than once in a reporting year, the most recent record in that reporting year will be selected:
+
+```{python}
+
+exits_annual = (
+    exits_filtered
+    .sort_values(by = ['ssn', 'month'], ascending = [True, False])
+    .drop_duplicates(subset = 'ssn', keep = 'first')
+)
+
+```
+
+## Join exit report and earnings data
+
+For the example data sources, exit records without placeholder SSNs are joined by SSN with:
+
+- Any earnings records for the second quarter after the reporting quarter.
+- Any earnings records for the fourth quarter after the reporting quarter.
+- Joins should keep all exit records regardless of matches in the earnings data.
+
+Any given exit record could have the following earnings records which relate to their absence or presence in measure calculations:
+
+  - No earnings records.
+    - Only included in the denominator of the **Employment Rate—2nd Quarter After Exit** measure.
+  - One earning record for the second quarter after the reporting quarter.
+    - Included in both the denominator and numerator of the **Employment Rate—2nd Quarter After Exit** measure.
+    - Included in the **Median Earnings—2nd Quarter After Exit** measure.
+    - Included in the denominator of the **Employment Retention Rate—4th Quarter After Exit** measure.
+  - One earning record for the fourth quarter after the reporting quarter.^[Note that the way the `fra` module makes earnings records, there will never be an exit record with only a fourth quarter after exit earnings record. However, with real earnings information this can happen.]
+    - Only included in the denominator of the **Employment Rate—2nd Quarter After Exit** measure.
+  - Earning records for both the second and fourth quarter after the reporting quarter.
+    - Included in both the denominator and numerator of the **Employment Rate—2nd Quarter After Exit** measure.
+    - Included in the **Median Earnings—2nd Quarter After Exit** measure.
+    - Included in both the denominator and numerator of the **Employment Retention Rate—4th Quarter After Exit** measure.
+
+In the code below, that creates joined data for quarterly and annual measures, the merges rely on two variables added to the exits data: `q2` and `q4`. These variables are coded based on the reporting quarter of the exit record to provide the second quarter after exit (`q2`) and the fourth quarter after exit (`q4`).
+
+### Quarterly
+
+```{python}
+
+exits_quarter = (
+    exits_quarter
+    .merge(earnings, left_on = ['q2', 'ssn'], right_on=['qtr', 'ssn'], how = 'left')
+    .rename(columns={'earnings': 'q2_earnings'})
+    .merge(earnings, left_on = ['q4', 'ssn'], right_on = ['qtr', 'ssn'], how = 'left')
+    .rename(columns={'earnings': 'q4_earnings'}).drop(['qtr_x', 'qtr_y', 'quarter'], axis = 1)
+)
+
+```
+
+First few rows of joined data:
+
+```{python}
+#| echo: false
+
+GT(exits_quarter.head())
+
+```
+
+### Annual
+
+```{python}
+
+exits_annual = (
+    exits_annual
+    .merge(earnings, left_on = ['q2', 'ssn'], right_on=['qtr', 'ssn'], how = 'left')
+    .rename(columns={'earnings': 'q2_earnings'})
+    .merge(earnings, left_on = ['q4', 'ssn'], right_on = ['qtr', 'ssn'], how = 'left')
+    .rename(columns={'earnings': 'q4_earnings'}).drop(['qtr_x', 'qtr_y', 'quarter'], axis = 1)
+)
+
+```
+
+Last few rows of joined data:
+
+```{python}
+#| echo: false
+
+GT(exits_quarter.tail())
+
+```
+
+# FRA Work Outcomes Measures
+
+The measures and their components are presented in tables in the following subsections.
+
+Definition of measures and components:
+
+* `# exits`: the count of exits in the reporting period
+* `# earnings Q2`: the count of records with earnings values greater than zero in the second quarter after the exit quarter
+* `Rate earnings Q2`: the count of records with earnings values greater than zero in the second quarter after the exit quarter *divided by* the count of exits in the reporting period (`# earnings Q2` / `# exits`)
+* `Median earnings Q2`: the median value of records with earnings values greater than zero in the second quarter after the exit quarter
+* `# earnings Q4`: the count of records with earnings values greater than zero in both the second and fourth quarter after the exit quarter
+* `Rate earnings Q4`: the count of records with earnings values greater than zero in both the second and fourth quarter after the exit quarter *divided by* the count of records with earnings values greater than zero in the second quarter after the exit quarter (`# earnings Q4` / `# earnings Q2`)
+
+Relationship to the FRA measures:
+
+* **Employment Rate—2nd Quarter After Exit** is the `Rate earnings Q2` column.
+* **Median Earnings—2nd Quarter After Exit** is the `Median earnings Q2` column.
+* **Employment Retention Rate—4th Quarter After Exit** is the `Rate earnings Q4` column.
+
+## Rounding for rates
+
+Rates will be presented out to four decimal places for proportions, two decimal places for percentages. Rounding will be executed as 'rounding half away from zero'. We use 'rounding half away from zero' to conform to the rounding defaults in widely used office applications, such as MS Excel. Of the coded examples provided, this affects Python and R because the built-in default rounding is 'rounding half to even'.
+
+Comparison of 'rounding half away from zero' and Python's built-in default:
+
+```{python}
+
+from decimal import Decimal, ROUND_HALF_UP
+
+def round_half_away_from_zero(value):
+
+    decimal_value = Decimal(str(value))  
+    rounded_value = decimal_value.quantize(Decimal('0.0001'), rounding = ROUND_HALF_UP)
+    return float(rounded_value)
+
+# example
+df = pd.DataFrame({'Decimal': [0.00015, 0.00025, 0.00035, 0.00045, 0.00055]})
+df['Round half away from zero'] = df['Decimal'].apply(round_half_away_from_zero)
+df['Round built-in default'] = df['Decimal'].apply(lambda x: round(x, 4))
+
+GT(df)
+
+```
+
+## Quarterly
+
+Calculations:
+
+```{python}
+#| echo: true
+
+quarterly = exits_quarter.groupby('reporting_quarter').agg(
+    total=('ssn', 'count'),
+    count_q2_earnings=('q2_earnings', lambda x: (x > 0).sum()),
+    median_q2_earnings=('q2_earnings', lambda x: x[x > 0].median() if (x > 0).any() else np.nan),
+    count_q4_earnings=('q4_earnings', lambda x: ((exits_quarter['q2_earnings'] > 0) & (x > 0)).sum())
+).reset_index()
+
+quarterly['rate_q2_earnings'] = (quarterly['count_q2_earnings'] / quarterly['total']).apply(round_half_away_from_zero)
+quarterly['rate_q4_earnings'] = (quarterly['count_q4_earnings'] / quarterly['count_q2_earnings']).apply(round_half_away_from_zero)
+
+```
+
+Calculated measures and their components:
+
+```{python}
+#| echo: false
+
+quarter_measure = (
+    GT(quarterly)
+    .cols_label(
+        reporting_quarter = 'Quarter',
+        total = '# exits',
+        count_q2_earnings = '# earnings Q2',
+        median_q2_earnings = 'Median earnings Q2',
+        count_q4_earnings	= '# earnings Q4',
+        rate_q2_earnings = 'Rate earnings Q2',
+        rate_q4_earnings = 'Rate earnings Q4')
+    .cols_move(columns = 'rate_q2_earnings',
+               after = 'count_q2_earnings')
+    .fmt_number(columns= ['rate_q2_earnings',
+                          'rate_q4_earnings'], decimals = 4)
+    .fmt_currency(columns = 'median_q2_earnings')
+)
+
+quarter_measure
+
+```
+
+## Annual
+
+Calculations:
+
+```{python}
+
+annual = {
+    'total': int(exits_annual['ssn'].count()),
+    'count_q2_earnings': int((exits_annual['q2_earnings'] > 0).sum()),
+    'median_q2_earnings': exits_annual.loc[exits_annual['q2_earnings'] > 0, 'q2_earnings'].median()
+}
+
+annual['rate_q2_earnings'] = round_half_away_from_zero(annual['count_q2_earnings'] / annual['total'])
+annual['count_q4_earnings'] = int(((exits_annual['q2_earnings'] > 0) &
+                                (exits_annual['q4_earnings'] > 0)).sum())
+annual['rate_q4_earnings'] = round_half_away_from_zero(annual['count_q4_earnings'] / annual['count_q2_earnings'])
+
+```
+
+Calculated measures and their components:
+
+```{python}
+#| echo: false
+
+annual_measure = (
+    GT(pd.DataFrame([annual]))
+    .cols_label(
+        total = 'Exits',
+        count_q2_earnings = '# earnings Q2',
+        median_q2_earnings = 'Median earnings Q2',
+        count_q4_earnings	= '# earnings Q4',
+        rate_q2_earnings = 'Rate earnings Q2',
+        rate_q4_earnings = 'Rate earnings Q4')
+    .cols_move(columns = 'rate_q2_earnings',
+               after = 'count_q2_earnings')
+    .fmt_number(columns= ['rate_q2_earnings',
+                          'rate_q4_earnings'], decimals = 4)
+    .fmt_currency(columns = 'median_q2_earnings')
+)
+
+annual_measure
+
+```
+
+## Summary
+
+```{python}
+#| echo: false
+
+# measures and chart labels
+measures = {
+    'rate_q2_earnings': 'Employment Rate—2nd Quarter After Exit',
+    'median_q2_earnings': 'Median Earnings—2nd Quarter After Exit',
+    'rate_q4_earnings': 'Employment Retention Rate—4th Quarter After Exit'
+}
+
+# format y-axis labels
+def format_y_axis(value, _):
+    if 'rate' in measure:
+        return f'{value:.2%}'  # convert proportion to percentage
+    elif 'median' in measure:
+        return f'${value:,.2f}'  # format as currency
+    else:
+        return f'{value:,.0f}'  # numeric format
+
+# create bar charts
+for measure, title in measures.items():
+    plt.figure(figsize = (6, 4))
+
+    # quarterly values
+    quarters = quarterly['reporting_quarter'].astype(str)  # string for labeling
+    values = quarterly[measure]
+
+    # append annual value
+    x_labels = list(quarters) + ['Annual']
+    y_values = list(values) + [annual[measure]]
+
+    # create bar chart
+    bars = plt.bar(x_labels, y_values, color = ['#63bab0'] * len(quarters) + ['#407972'])
+
+    # add value labels with appropriate formatting
+    for bar, y_value in zip(bars, y_values):
+        height = bar.get_height()
+        if 'rate' in measure:
+            label = f'{height:.2%}'  # convert proportion to percentage
+        elif 'median' in measure:
+            label = f'${height:,.2f}'  # format as currency
+        else:
+            label = f'{height:,.0f}'  # default numeric format
+
+        plt.text(bar.get_x() + bar.get_width()/2, height, label, 
+                 ha = 'center', va = 'bottom', fontsize = 10)
+
+    # formatting
+    plt.title(title)
+    plt.ylabel('Value')
+    plt.xticks(rotation = 0)
+    plt.grid(axis = 'y', linestyle = '--', alpha = 0.7)
+
+    # apply y-axis formatter
+    plt.gca().yaxis.set_major_formatter(mticker.FuncFormatter(format_y_axis))
+
+    # set y-axis limits
+    if 'rate' in measure:
+        plt.ylim(0, 1)  # 0 to 1 for percentage scale
+    elif 'median' in measure:
+        max_value = max(y_values)
+        plt.ylim(0, max_value * 1.1)  # add 10% padding above max
+
+    # remove some borders
+    plt.gca().spines['left'].set_visible(False)
+    plt.gca().spines['top'].set_visible(False)
+    plt.gca().spines['right'].set_visible(False)
+
+    # show plot
+    plt.tight_layout()
+    plt.show()
+
+```
