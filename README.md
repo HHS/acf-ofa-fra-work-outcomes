@@ -1,8 +1,12 @@
 # FRA Work Outcome Measures Calculation Materials
 
-This repo contains code and documentation to show how the Temporary Assistance for Needy Families (TANF) Fiscal Responsibility Act (FRA) work outcome measures will be calculated.
+This repo contains code and documentation to show how the Temporary Assistance for Needy Families (TANF) Fiscal Responsibility Act (FRA) employment work outcome measures will be calculated.
 
-## Contents
+## Calculation FRA Outcome Measures
+
+These materials provide a demonstration on how wage records are handled to calculate the employment measures.
+
+### Contents
 
 - [example_fra_summary.qmd](example_fra_summary.qmd): Quarto code that generates data using `fra` module, then walks through the calculations in Python. Settings in this code affects the attributes of outputs: data used in rendered document and generated csv files.
 - [fra.py](fra.py): `fra` module to generate fake FRA data, both exit reports and earnings data.
@@ -11,12 +15,16 @@ This repo contains code and documentation to show how the Temporary Assistance f
 - [ta_materials_export.py](ta_materials_export.py): Code to create a zip file export of select materials for external use. Depends on the outputs from [example_fra_summary.qmd](example_fra_summary.qmd).
 - [ta_README.md](ta_README.md): Read-me specifically for the zip file export for external use.
 
-## Outputs ignored by repo
+### Outputs ignored by repo
 
 - **earnings_records.csv**: Fake earnings data for individuals in **exiter_report.csv**. This file can be overwritten when either the Quarto code is rendered or the `fra` module is used apart from the Quarto code.
 - **exiter_report.csv**: Year's worth of fake exiter reports. This file can be overwritten when either the Quarto code is rendered or the `fra` module is used apart from the Quarto code.
 - **example_fra_summary.html**: This is the rendered Quarto document created by [example_fra_summary.qmd](example_fra_summary.qmd).
 - **fra_work_outcomes_YYYYMMDD.zip**: Zip file export of materials for external use. Writes locally to the "output folder". The "output" folder is ignored and created by code if it does not exist.
+
+## Data Handling Process for NDNH Quarterly Wage Records
+
+In development
 
 ## Disclaimer
 
@@ -24,4 +32,4 @@ The files provided here are for informational purposes only. They are supplied a
 
 ## OFA information on FRA
 
-More information on FRA, including these measures, is available here: [https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023](https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023).
+More information on FRA, including these employment measures, is available here: [https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023](https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023).
