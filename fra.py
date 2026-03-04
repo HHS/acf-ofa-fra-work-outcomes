@@ -13,8 +13,8 @@ class FRAData:
                  number_people: tuple[int, int, int, int] = None,
                  duplicate_probability: float = None,
                  placeholder_ssn_probability: float = None,
-                 employment_rate: tuple[int, int, int, int] = None,
-                 retention_rate: tuple[int, int, int, int] = None,
+                 employment_rate: tuple[float, float, float, float] = None,
+                 retention_rate: tuple[float, float, float, float] = None,
                  pilot: bool = None):
 
         # validate fiscal_year
