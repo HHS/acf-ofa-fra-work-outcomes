@@ -29,10 +29,16 @@ exits <- exits |>
   q2 = case_when(reporting_quarter %% 10 < 3 ~ reporting_quarter + 2,
                  TRUE ~ reporting_quarter + 8),
   q4 = reporting_quarter + 10) |>
-  left_join(earnings, by = join_by(q2 == qtr, ssn == ssn)) |>
-  rename(q2_earnings = earnings) |>
-  left_join(earnings, by = join_by(q4 == qtr, ssn == ssn)) |>
-  rename(q4_earnings = earnings) |>
+  left_join(
+    earnings |> transmute(ssn, qtr, q2_earnings = earnings),
+    by   = join_by(ssn == ssn, q2 == qtr),
+    keep = FALSE
+  ) |>
+  left_join(
+    earnings |> transmute(ssn, qtr, q4_earnings = earnings),
+    by   = join_by(ssn == ssn, q4 == qtr),
+    keep = FALSE
+  ) |>
   filter(ssn != 999999999) |>
   arrange(ssn, month)
 
