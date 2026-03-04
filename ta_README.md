@@ -13,7 +13,10 @@ This folder contains code and documentation to show how the Temporary Assistance
 - **exiter_report.csv**: Year's worth of fake exiter reports. This file can be overwritten when either the Quarto code is rendered or the `fra` module is used apart from the Quarto code.
 - **earnings_records.csv**: Fake earnings data for individuals in **exiter_report.csv**. This file can be overwritten when either the Quarto code is rendered or the `fra` module is used apart from the Quarto code.
 - **measure_calculation.R**: R code to do the measure calculations and charts from csv files generated with `fra` module (**exiter_report.csv** and **earnings_records.csv**).
-- **measure_calculation.sql**: SQL code to do the measure calculations from csv files generated with `fra` module (**exiter_report.csv** and **earnings_records.csv**).
+- **tsql_measure_calculation.sql**: T-SQL script to do the measure calculations from csv files generated with `fra` module (**exiter_report.csv** and **earnings_records.csv**).
+- Postgres scripts:
+  - **postgres_01_load_data.sql**: Creates a schema and tables, then loads csv files generated with the `fra` module.
+  - **postgres_02_measure_calculation.sql**: Does the measure calculation.
 
 ## Note on data outputs
 
@@ -25,4 +28,7 @@ The files provided here are for informational purposes only. They are supplied a
 
 ## OFA information on FRA
 
-More information on FRA, including these measures, is available here: [https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023](https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023).
+More information on FRA, including these measures, is available:
+
+- [https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023](https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023).
+- [https://peerta.acf.hhs.gov/total](https://peerta.acf.hhs.gov/total)

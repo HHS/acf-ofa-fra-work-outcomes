@@ -7,7 +7,10 @@ This repo contains code and documentation to show how the Temporary Assistance f
 - [example_fra_summary.qmd](example_fra_summary.qmd): Quarto code that generates data using `fra` module, then walks through the calculations in Python. Settings in this code affects the attributes of outputs: data used in rendered document and generated csv files.
 - [fra.py](fra.py): `fra` module to generate fake FRA data, both exit reports and earnings data.
 - [measure_calculation.R](measure_calculation.R): R code to do the measure calculations and charts from csv files generated with `fra` module.
-- [measure_calculation.sql](measure_calculation.sql): SQL code to do the measure calculations from csv files generated with `fra` module. This code snippet has csv file paths flagging that they need to be replaced; this code is intended for external use.
+- [tsql_measure_calculation.sql](measure_calculation.sql): T-SQL script to do the measure calculations from csv files generated with `fra` module. This code snippet has csv file paths flagging that they need to be replaced; this code is intended for external use.
+- Postgres:
+  - [postgres_01_load_data.sql](postgres_01_load_data.sql): Creates a schema and tables, then loads csv files generated with the `fra` module.
+  - [postgres_02_measure_calculation.sql](postgres_02_measure_calculation.sql): Does the measure calculation.
 - [ta_materials_export.py](ta_materials_export.py): Code to create a zip file export of select materials for external use. Depends on the outputs from [example_fra_summary.qmd](example_fra_summary.qmd).
 - [ta_README.md](ta_README.md): Read-me specifically for the zip file export for external use.
 
@@ -24,4 +27,7 @@ The files provided here are for informational purposes only. They are supplied a
 
 ## OFA information on FRA
 
-More information on FRA, including these measures, is available here: [https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023](https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023).
+More information on FRA, including these measures, is available:
+
+- [https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023](https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023).
+- [https://peerta.acf.hhs.gov/total](https://peerta.acf.hhs.gov/total)
