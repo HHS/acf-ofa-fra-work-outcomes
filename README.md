@@ -22,6 +22,15 @@ This repo contains code and documentation to show how the Temporary Assistance f
 
 The files provided here are for informational purposes only. They are supplied as an example and may not be suitable for all systems, environments, or use cases. Before using any code or data, thoroughly review, test, and adapt it to fit your specific requirements.
 
-## OFA information on FRA
+## Information on FRA
 
-More information on FRA, including these measures, is available here: [https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023](https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023).
+- More information on FRA, including these measures, is available here: [https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023](https://acf.gov/ofa/law-regulation/tanf-provisions-fra-2023).
+- Technical assistance materials on implementing FRA from the TANF Outcomes Technical Assistance and Logistics (TOTAL) project: [https://peerta.acf.hhs.gov](https://peerta.acf.hhs.gov/total)
+
+## Maintenance, security, and contact
+
+This repository is maintained by the U.S. Department of Health and Human Services, Administration for Children and Families, Office of Family Assistance (HHS-ACF-OFA). The current `main` branch is the maintained public version of this repository. Older copies, forks, local downloads, or archived versions are not maintained by HHS-ACF-OFA.
+
+For **security-related reports**, please see [SECURITY.md](SECURITY.md). Do not submit vulnerability reports through public GitHub issues.
+
+For **non-security questions** about the repository or its materials, contact HHS-ACF-OFA repository maintainers at [mailto:tanfdata@acf.hhs.gov](tanfdata@acf.hhs.gov). Do not include sensitive information, credentials, production data, personally identifiable information, or vulnerability details in public GitHub issues.
