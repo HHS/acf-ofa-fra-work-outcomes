@@ -23,3 +23,6 @@ fra_measures.sql
 # quarto
 /.quarto/
 _quarto.yml
+
+# fake NDNH files
+ORG.EXPSXXM1.FPLS.R*
