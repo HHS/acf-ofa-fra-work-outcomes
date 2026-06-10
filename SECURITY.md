@@ -22,4 +22,4 @@ If your report relates to this repository, please include:
 - Steps to reproduce, if applicable
 - Any suggested remediation, if available
 
-If you have other cybersecurity related questions, please contact us at csirc@hhs.gov.
+If you have other cybersecurity related questions, please contact us at [csirc@hhs.gov](mailto:csirc@hhs.gov).

@@ -33,4 +33,4 @@ This repository is maintained by the U.S. Department of Health and Human Service
 
 For **security-related reports**, please see [SECURITY.md](SECURITY.md). Do not submit vulnerability reports through public GitHub issues.
 
-For **non-security questions** about the repository or its materials, contact HHS-ACF-OFA repository maintainers at [mailto:tanfdata@acf.hhs.gov](tanfdata@acf.hhs.gov). Do not include sensitive information, credentials, production data, personally identifiable information, or vulnerability details in public GitHub issues.
+For **non-security questions** about the repository or its materials, contact HHS-ACF-OFA repository maintainers at [tanfdata@acf.hhs.gov](mailto:tanfdata@acf.hhs.gov). Do not include sensitive information, credentials, production data, personally identifiable information, or vulnerability details in public GitHub issues.
